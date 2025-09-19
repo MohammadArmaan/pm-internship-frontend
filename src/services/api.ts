@@ -50,13 +50,13 @@ export const apiService = {
   // Get available sectors
   getSectors: async (): Promise<string[]> => {
     const response = await api.get('/sectors');
-    return response.data;
+    return response.data.sectors;   // ✅
   },
 
   // Get available locations
   getLocations: async (): Promise<string[]> => {
     const response = await api.get('/locations');
-    return response.data;
+    return response.data.locations; // ✅
   },
 
   // Get API info
