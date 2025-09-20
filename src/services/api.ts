@@ -12,12 +12,12 @@ const api = axios.create({
 
 export interface UserProfile {
   name: string;
-  age: number;
-  education: string;
+  education_level: string;
+  experience_years: number;
+  field_of_study: string;
   skills: string[];
-  interests: string[];
   preferred_sectors: string[];
-  preferred_locations: string[];
+  preferred_location: string; // single string, not array
 }
 
 export interface InternshipRecommendation {

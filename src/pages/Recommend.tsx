@@ -24,22 +24,42 @@ import {
 } from "lucide-react";
 import { apiService, UserProfile, InternshipRecommendation } from "@/services/api";
 
+// Updated UserProfile interface to match API requirements
+interface FormData {
+  name: string;
+  education_level: string;
+  experience_years: number;
+  field_of_study: string;
+  skills: string[];
+  preferred_sectors: string[];
+  preferred_location: string; // single string, not array
+}
+
 const Recommend = () => {
   const [sectors, setSectors] = useState<string[]>([]);
   const [locations, setLocations] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [recommendations, setRecommendations] = useState<InternshipRecommendation[]>([]);
-  const [formData, setFormData] = useState<UserProfile>({
+  const [formData, setFormData] = useState<FormData>({
     name: "",
-    age: 18,
-    education: "",
+    education_level: "",
+    experience_years: 0,
+    field_of_study: "",
     skills: [],
-    interests: [],
     preferred_sectors: [],
-    preferred_locations: [],
+    preferred_location: "",
   });
   const [skillInput, setSkillInput] = useState("");
   const [interestInput, setInterestInput] = useState("");
+
+  // Education level options
+  const educationLevels = [
+    "high_school",
+    "undergraduate",
+    "graduate",
+    "postgraduate",
+    "diploma"
+  ];
 
   useEffect(() => {
     loadFormData();
@@ -79,23 +99,6 @@ const Recommend = () => {
     }));
   };
 
-  const addInterest = () => {
-    if (interestInput.trim() && !formData.interests.includes(interestInput.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        interests: [...prev.interests, interestInput.trim()]
-      }));
-      setInterestInput("");
-    }
-  };
-
-  const removeInterest = (interest: string) => {
-    setFormData(prev => ({
-      ...prev,
-      interests: prev.interests.filter(i => i !== interest)
-    }));
-  };
-
   const handleSectorChange = (sector: string) => {
     setFormData(prev => ({
       ...prev,
@@ -105,22 +108,13 @@ const Recommend = () => {
     }));
   };
 
-  const handleLocationChange = (location: string) => {
-    setFormData(prev => ({
-      ...prev,
-      preferred_locations: prev.preferred_locations.includes(location)
-        ? prev.preferred_locations.filter(l => l !== location)
-        : [...prev.preferred_locations, location]
-    }));
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.education || formData.skills.length === 0) {
+    if (!formData.name || !formData.education_level || !formData.field_of_study || formData.skills.length === 0) {
       toast({
         title: "Incomplete form",
-        description: "Please fill in all required fields.",
+        description: "Please fill in all required fields (name, education level, field of study, and at least one skill).",
         variant: "destructive",
       });
       return;
@@ -128,13 +122,25 @@ const Recommend = () => {
 
     setLoading(true);
     try {
-      const result = await apiService.getRecommendations(formData);
+      // Create the payload matching the API requirements
+      const apiPayload: UserProfile = {
+        name: formData.name,
+        education_level: formData.education_level,
+        experience_years: formData.experience_years,
+        field_of_study: formData.field_of_study,
+        skills: formData.skills,
+        preferred_sectors: formData.preferred_sectors,
+        preferred_location: formData.preferred_location
+      };
+
+      const result = await apiService.getRecommendations(apiPayload);
       setRecommendations(result);
       toast({
         title: "Success!",
         description: `Found ${result.length} internship recommendations for you.`,
       });
     } catch (error) {
+      console.error("API Error:", error);
       toast({
         title: "Error",
         description: "Failed to get recommendations. Please try again.",
@@ -182,37 +188,57 @@ const Recommend = () => {
                       <h3 className="text-lg font-semibold">Personal Information</h3>
                     </div>
                     
+                    <div>
+                      <Label htmlFor="name">Full Name *</Label>
+                      <Input
+                        id="name"
+                        value={formData.name}
+                        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                        placeholder="Enter your full name"
+                        required
+                      />
+                    </div>
+
                     <div className="grid md:grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="name">Full Name *</Label>
-                        <Input
-                          id="name"
-                          value={formData.name}
-                          onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                          placeholder="Enter your full name"
-                          required
-                        />
+                        <Label htmlFor="education_level">Education Level *</Label>
+                        <Select 
+                          value={formData.education_level} 
+                          onValueChange={(value) => setFormData(prev => ({ ...prev, education_level: value }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select education level" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {educationLevels.map((level) => (
+                              <SelectItem key={level} value={level}>
+                                {level.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
+
                       <div>
-                        <Label htmlFor="age">Age</Label>
+                        <Label htmlFor="experience_years">Experience Years</Label>
                         <Input
-                          id="age"
+                          id="experience_years"
                           type="number"
-                          min="16"
-                          max="35"
-                          value={formData.age}
-                          onChange={(e) => setFormData(prev => ({ ...prev, age: parseInt(e.target.value) || 18 }))}
+                          min="0"
+                          max="10"
+                          value={formData.experience_years}
+                          onChange={(e) => setFormData(prev => ({ ...prev, experience_years: parseInt(e.target.value) || 0 }))}
                         />
                       </div>
                     </div>
                     
                     <div>
-                      <Label htmlFor="education">Education *</Label>
+                      <Label htmlFor="field_of_study">Field of Study *</Label>
                       <Input
-                        id="education"
-                        value={formData.education}
-                        onChange={(e) => setFormData(prev => ({ ...prev, education: e.target.value }))}
-                        placeholder="e.g., B.Tech Computer Science, MBA, 12th Grade"
+                        id="field_of_study"
+                        value={formData.field_of_study}
+                        onChange={(e) => setFormData(prev => ({ ...prev, field_of_study: e.target.value }))}
+                        placeholder="e.g., Computer Science, Business Administration, Mechanical Engineering"
                         required
                       />
                     </div>
@@ -250,38 +276,6 @@ const Recommend = () => {
                     </div>
                   </div>
 
-                  {/* Interests */}
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Heart className="h-5 w-5 text-primary" />
-                      <h3 className="text-lg font-semibold">Interests</h3>
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      <Input
-                        value={interestInput}
-                        onChange={(e) => setInterestInput(e.target.value)}
-                        placeholder="Add an interest (e.g., AI, Healthcare, Environment)"
-                        onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addInterest())}
-                      />
-                      <Button type="button" onClick={addInterest} size="icon">
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    
-                    <div className="flex flex-wrap gap-2">
-                      {formData.interests.map((interest) => (
-                        <Badge key={interest} variant="outline" className="pr-1">
-                          {interest}
-                          <X
-                            className="ml-1 h-3 w-3 cursor-pointer"
-                            onClick={() => removeInterest(interest)}
-                          />
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-
                   {/* Preferences */}
                   <div className="grid md:grid-cols-2 gap-6">
                     <div>
@@ -307,21 +301,23 @@ const Recommend = () => {
                     <div>
                       <Label className="flex items-center gap-2 mb-4">
                         <MapPin className="h-4 w-4" />
-                        Preferred Locations
+                        Preferred Location
                       </Label>
-                      <div className="space-y-2 max-h-40 overflow-y-auto">
-                        {locations.map((location) => (
-                          <label key={location} className="flex items-center space-x-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={formData.preferred_locations.includes(location)}
-                              onChange={() => handleLocationChange(location)}
-                              className="rounded border-gray-300"
-                            />
-                            <span className="text-sm">{location}</span>
-                          </label>
-                        ))}
-                      </div>
+                      <Select 
+                        value={formData.preferred_location} 
+                        onValueChange={(value) => setFormData(prev => ({ ...prev, preferred_location: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select preferred location" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {locations.map((location) => (
+                            <SelectItem key={location} value={location}>
+                              {location}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 
@@ -379,7 +375,7 @@ const Recommend = () => {
                             {internship.match_score && (
                               <div className="flex items-center gap-1">
                                 <Star className="h-4 w-4 text-accent fill-accent" />
-                                <span className="text-sm font-medium">{(internship.match_score * 100).toFixed(0)}%</span>
+                                <span className="text-sm font-medium">{(internship.match_score).toFixed(0)}%</span>
                               </div>
                             )}
                           </div>
